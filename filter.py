@@ -34,13 +34,28 @@ def is_relevant_headline(headline, keywords):
     return any(keyword in headline_lower for keyword in keywords)
 
 def extract_potential_keywords(text_series, existing_keywords):
+    # Common stopwords to ignore
+    stopwords = {
+        "and", "the", "for", "with", "from", "this", "that", "you", "are", "have", "has", "not",
+        "all", "any", "can", "but", "out", "via", "its", "his", "her", "our", "your", "they", "them",
+        "on", "at", "in", "to", "by", "of", "is", "as", "an", "or", "be", "a", "we", "i", "it"
+    }
+
     all_tokens = []
     for text in text_series.dropna():
-        tokens = re.findall(r'\b\w+\b', text.lower())
+        tokens = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())  # Only words with 3+ letters
         all_tokens.extend(tokens)
+
     counts = Counter(all_tokens)
-    suggestions = {word: count for word, count in counts.items()
-                   if word not in existing_keywords and len(word) > 2 and count > 1}
+
+    suggestions = {
+        word: count
+        for word, count in counts.items()
+        if word not in existing_keywords
+        and word not in stopwords
+        and count > 1
+    }
+
     return dict(sorted(suggestions.items(), key=lambda x: x[1], reverse=True)[:25])
 
 # --- Streamlit UI ---
