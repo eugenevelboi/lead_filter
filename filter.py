@@ -111,22 +111,12 @@ if uploaded_file is not None:
 
         st.subheader("✅ Filtered Leads")
         st.write(f"{len(filtered_df)} out of {len(df)} leads passed the keyword filters.")
+
         selected_rows = st.multiselect(
             "Select rows to remove or add to exclusion list:",
             options=filtered_df.index,
             format_func=lambda i: f"{filtered_df.loc[i, 'current_company_position'] or ''} | {filtered_df.loc[i, 'headline'] or ''}"
         )
-
-        st.dataframe(filtered_df)
-        
-        # --- Copy Profile URLs ---
-        if not temp_filtered.empty and "profile_url" in temp_filtered.columns:
-            profile_urls = temp_filtered["profile_url"].dropna().tolist()
-
-            st.subheader("🔗 Copy Profile URLs")
-            st.write("Below are all profile URLs from the filtered leads. You can copy them (Ctrl+A → Ctrl+C):")
-
-            st.code("\n".join(profile_urls), language='text')
 
         # Button to export without selected rows
         if selected_rows:
@@ -134,6 +124,18 @@ if uploaded_file is not None:
         else:
             temp_filtered = filtered_df
 
+        st.dataframe(temp_filtered)
+
+        # --- Copy Profile URLs ---
+        if "profile_url" in temp_filtered.columns and not temp_filtered["profile_url"].dropna().empty:
+            profile_urls = temp_filtered["profile_url"].dropna().tolist()
+
+            st.subheader("🔗 Copy Profile URLs")
+            st.write("Below are all profile URLs from the filtered leads. You can copy them (Ctrl+A → Ctrl+C):")
+
+            st.code("\n".join(profile_urls), language='text')
+
+        # Download filtered CSV
         csv = temp_filtered.to_csv(index=False).encode('utf-8')
         st.download_button("📥 Download Filtered Leads", csv, "filtered_ncube_leads.csv", "text/csv")
 
@@ -148,7 +150,7 @@ if uploaded_file is not None:
                 if filtered_df.loc[i, 'headline']:
                     exclusion_options.append(filtered_df.loc[i, 'headline'].strip().lower())
 
-            exclusion_options = list(set(exclusion_options))  # Remove duplicates
+            exclusion_options = list(set(exclusion_options))
 
             selected_exclusions = st.multiselect("Select exact phrases to add to exclusion list:", exclusion_options)
 
