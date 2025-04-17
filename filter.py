@@ -118,6 +118,15 @@ if uploaded_file is not None:
         )
 
         st.dataframe(filtered_df)
+        
+        # --- Copy Profile URLs ---
+        if not temp_filtered.empty and "profile_url" in temp_filtered.columns:
+            profile_urls = temp_filtered["profile_url"].dropna().tolist()
+
+            st.subheader("🔗 Copy Profile URLs")
+            st.write("Below are all profile URLs from the filtered leads. You can copy them (Ctrl+A → Ctrl+C):")
+
+            st.code("\n".join(profile_urls), language='text')
 
         # Button to export without selected rows
         if selected_rows:
