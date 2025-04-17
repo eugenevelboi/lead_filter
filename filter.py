@@ -106,15 +106,50 @@ if uploaded_file is not None:
         st.error("CSV must include 'headline' and 'current_company_position' columns.")
     else:
         mask = df.apply(lambda row: is_relevant_entry(row['headline'], row['current_company_position'], keywords, exclusion_keywords), axis=1)
-        filtered_df = df[mask]
+        filtered_df = df[mask].reset_index(drop=True)
         excluded_df = df[~mask]
 
         st.subheader("✅ Filtered Leads")
         st.write(f"{len(filtered_df)} out of {len(df)} leads passed the keyword filters.")
+        selected_rows = st.multiselect(
+            "Select rows to remove or add to exclusion list:",
+            options=filtered_df.index,
+            format_func=lambda i: f"{filtered_df.loc[i, 'current_company_position'] or ''} | {filtered_df.loc[i, 'headline'] or ''}"
+        )
+
         st.dataframe(filtered_df)
 
-        csv = filtered_df.to_csv(index=False).encode('utf-8')
+        # Button to export without selected rows
+        if selected_rows:
+            temp_filtered = filtered_df.drop(index=selected_rows)
+        else:
+            temp_filtered = filtered_df
+
+        csv = temp_filtered.to_csv(index=False).encode('utf-8')
         st.download_button("📥 Download Filtered Leads", csv, "filtered_ncube_leads.csv", "text/csv")
+
+        # Add selected rows to exclusion list
+        if selected_rows:
+            st.subheader("🚫 Add Selected Titles to Exclusion Keywords")
+
+            exclusion_options = []
+            for i in selected_rows:
+                if filtered_df.loc[i, 'current_company_position']:
+                    exclusion_options.append(filtered_df.loc[i, 'current_company_position'].strip().lower())
+                if filtered_df.loc[i, 'headline']:
+                    exclusion_options.append(filtered_df.loc[i, 'headline'].strip().lower())
+
+            exclusion_options = list(set(exclusion_options))  # Remove duplicates
+
+            selected_exclusions = st.multiselect("Select exact phrases to add to exclusion list:", exclusion_options)
+
+            if st.button("➕ Add Selected to Exclusion List"):
+                if selected_exclusions:
+                    save_exclusion_keywords_to_sheet(selected_exclusions)
+                    st.success(f"✅ Added {len(selected_exclusions)} items to exclusion list.")
+                    st.rerun()
+                else:
+                    st.warning("Please select at least one phrase to add.")
 
         st.subheader("🧠 Smart Keyword Suggestions (from excluded leads)")
         suggestions = extract_potential_keywords(excluded_df['headline'], keywords)
@@ -132,13 +167,13 @@ with st.expander("📂 View Keywords in Google Sheets"):
     st.write("**Exclusion Keywords (Tab: `remove`)**")
     st.write(sorted(set(exclusion_keywords)))
 
-# Add new exclusion keywords
-st.subheader("🚫 Add Exclusion Keywords (Blocklist)")
+# Add exclusion manually
+st.subheader("🚫 Add Exclusion Keywords Manually")
 new_exclusions_input = st.text_input(
     "Enter keywords to exclude (comma-separated)", placeholder="e.g. firmware, mechanical, hardware"
 )
 
-if st.button("➕ Add to Exclusion List"):
+if st.button("➕ Add Manual Exclusions"):
     if new_exclusions_input.strip():
         new_exclusions = [kw.strip().lower() for kw in new_exclusions_input.split(",") if kw.strip()]
         save_exclusion_keywords_to_sheet(new_exclusions)
