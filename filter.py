@@ -36,6 +36,13 @@ def save_keywords_to_sheet(new_keywords):
     sheet.clear()
     sheet.update([["Keyword"]] + [[kw] for kw in all_keywords])
 
+def save_exclusion_keywords_to_sheet(new_exclusions):
+    sheet = client.open(SHEET_NAME).worksheet(REMOVE_TAB)
+    current = load_exclusion_keywords()
+    all_exclusions = sorted(set(current + new_exclusions))
+    sheet.clear()
+    sheet.update([["Exclusion Keyword"]] + [[kw] for kw in all_exclusions])
+
 # --- Keyword Filter Logic ---
 def is_relevant_entry(headline, position, keywords, exclusion_keywords):
     def contains_exact_exclusion(text):
@@ -50,11 +57,9 @@ def is_relevant_entry(headline, position, keywords, exclusion_keywords):
         text = text.lower()
         return any(kw in text for kw in keywords)
 
-    # Check headline and position against exclusions (strict match)
     if contains_exact_exclusion(str(headline)) or contains_exact_exclusion(str(position)):
         return False
 
-    # Check for any inclusion in either
     return contains_inclusion(str(headline)) or contains_inclusion(str(position))
 
 # --- Keyword Suggestion ---
@@ -82,7 +87,7 @@ def extract_potential_keywords(text_series, existing_keywords):
 st.title("nCube Lead Filter with Google Sheets Integration")
 st.write("Upload a CSV, filter tech leads based on smart keyword logic, and manage keywords via Google Sheets.")
 
-# Load keywords from both tabs
+# Load keywords
 try:
     keywords = load_keywords()
     exclusion_keywords = load_exclusion_keywords()
@@ -91,7 +96,7 @@ except Exception as e:
     st.error(f"❌ Could not load keywords: {e}")
     st.stop()
 
-# File uploader
+# File upload
 uploaded_file = st.file_uploader("📁 Upload your CSV file", type="csv")
 
 if uploaded_file is not None:
@@ -120,9 +125,24 @@ if uploaded_file is not None:
             st.success(f"✅ Added {len(selected)} new keywords to Google Sheets!")
             st.rerun()
 
-# Show current keyword lists
+# View current lists
 with st.expander("📂 View Keywords in Google Sheets"):
     st.write("**Inclusion Keywords (Tab: `keywords`)**")
     st.write(sorted(set(keywords)))
     st.write("**Exclusion Keywords (Tab: `remove`)**")
     st.write(sorted(set(exclusion_keywords)))
+
+# Add new exclusion keywords
+st.subheader("🚫 Add Exclusion Keywords (Blocklist)")
+new_exclusions_input = st.text_input(
+    "Enter keywords to exclude (comma-separated)", placeholder="e.g. firmware, mechanical, hardware"
+)
+
+if st.button("➕ Add to Exclusion List"):
+    if new_exclusions_input.strip():
+        new_exclusions = [kw.strip().lower() for kw in new_exclusions_input.split(",") if kw.strip()]
+        save_exclusion_keywords_to_sheet(new_exclusions)
+        st.success(f"✅ Added {len(new_exclusions)} exclusion keywords to Google Sheets.")
+        st.rerun()
+    else:
+        st.warning("Please enter at least one keyword.")
