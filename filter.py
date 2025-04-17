@@ -1,8 +1,7 @@
 import streamlit as st
 import pandas as pd
-import spread
+import gspread  # FIXED: changed from `spread` to `gspread`
 import json
-from streamlit.runtime.scriptrunner import get_script_run_ctx
 from oauth2client.service_account import ServiceAccountCredentials
 import re
 from collections import Counter
@@ -13,7 +12,7 @@ creds_dict = json.loads(st.secrets["GOOGLE_SHEETS_CREDS"])
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
-SHEET_NAME = "Your Google Sheet Name Here"
+SHEET_NAME = "ncube-keywords-db"  # ✅ REPLACE with your actual sheet name
 TAB_NAME = "keywords"
 
 def load_keywords():
@@ -48,11 +47,12 @@ def extract_potential_keywords(text_series, existing_keywords):
 st.title("nCube Lead Filter with Google Sheets Integration")
 st.write("Upload a CSV, filter relevant tech leads, and maintain a cloud-based keyword list in Google Sheets.")
 
-# Load keywords
+# Test connection
 try:
     keywords = load_keywords()
+    st.success("✅ Connected to Google Sheets.")
 except Exception as e:
-    st.error(f"Could not load keywords from Google Sheets: {e}")
+    st.error(f"❌ Could not load keywords from Google Sheets: {e}")
     st.stop()
 
 # File upload
